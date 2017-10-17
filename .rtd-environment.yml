@@ -1,0 +1,13 @@
+name: mrspoc
+
+channels:
+    - astropy
+
+dependencies:
+    - astropy
+    - scipy
+    - matplotlib
+    - numpy
+    - pip:
+        - sphinx-automodapi
+        - numpydoc
