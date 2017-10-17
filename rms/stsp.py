@@ -41,7 +41,7 @@ infile_template_l = """#PLANET PROPERTIES
 {start_time:2.10f}		; start time to start fitting the light curve
 {lc_duration:2.10f}		; duration of light curve to fit (days)
 {real_max:2.10f}		; real maximum of light curve data (corrected for noise), 0 -> use downfrommax
-1						; is light curve flattened (to zero) outside of transits?
+0						; is light curve flattened (to zero) outside of transits?
 #ACTION
 l						; l= generate light curve from parameters
 {spot_params}
@@ -74,7 +74,7 @@ def rho_star(transit_params):
 
 
 def clean_up(require_input=False):
-    paths_to_clean = glob(os.path.abspath(os.path.join(os.path.dirname(__file__), '.friedrich_tmp_*')))
+    paths_to_clean = glob(os.path.abspath(os.path.join(os.path.dirname(__file__), '.rms_tmp_*')))
     if require_input:
         user_input = input("Delete following paths [y]/n: \n" +
                            '\n'.join(paths_to_clean))
@@ -85,30 +85,41 @@ def clean_up(require_input=False):
         for directory in paths_to_clean:
             shutil.rmtree(directory)
 
+
+def spot_obj_to_params(spot):
+    if hasattr(spot, '__len__'):
+        return np.concatenate([[s.r, s.theta, s.phi] for s in spot])
+    else:
+        return np.array([spot.r, spot.theta, spot.phi])
+
+
 class STSP(object):
-    def __init__(self, lc, transit_params, spot_params, outdir=None, keep_dir=False):
+    """
+    Context manager for working with STSP
+    """
+    def __init__(self, times, transit_params, spot, outdir=None, keep_dir=False):
         """
         Parameters
         ----------
-        lc : `friedrich.lightcurve.LightCurve`
-            Light curve object
-        transit_params : `batman.TransitParams`
-            Parameters for planet and star
-        spot_params : `numpy.ndarray`
-            [r, theta, phi] for each spot to model with STSP
+        times : `~astropy.time.Time`
+            Time array object
+        transit_params : `~rms.Star`
+            Parameters for star
+        spot : `~rms.Spot` or list of `~rms.Spot` objects
+            Spot parameter object(s)
         outdir : str
             Directory to write temporary outputs into
         """
-        self.lc = lc
+        self.times = times
         self.transit_params = transit_params
-        self.spot_params = np.array(spot_params)
+        self.spot_params = spot_obj_to_params(spot)
 
         current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         random_integer = np.random.randint(0, 1e6)
 
         if outdir is None:
             self.outdir = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                          '.friedrich_tmp_{0}_{1}'.format(current_time, random_integer)))
+                                          '.rms_tmp_{0}_{1}'.format(current_time, random_integer)))
         else:
             self.outdir = outdir
 
@@ -135,7 +146,8 @@ class STSP(object):
             if os.path.exists(abspath):
                 os.remove(abspath)
 
-    def stsp_lc(self, n_ld_rings=40, verbose=False, t_bypass=False, stsp_exec=None):
+    def generate_lightcurve(self, n_ld_rings=40, verbose=False, t_bypass=False,
+                            stsp_exec=None):
         #self.safe_clean_up()
 
         if stsp_exec is None:
@@ -146,12 +158,12 @@ class STSP(object):
 
         t_buffer = 0.08
         n_transits = np.rint(np.median((self.transit_params.t0 -
-                                        self.lc.times.jd) /
+                                        self.times.jd) /
                                        self.transit_params.per))
         if not t_bypass: 
-            times = self.lc.times.jd + n_transits*self.transit_params.per
+            times = self.times.jd + n_transits*self.transit_params.per
         else: 
-            times = self.lc.times.jd
+            times = self.times.jd
         fluxes = np.ones_like(times)
 
         np.savetxt(self.model_path,
@@ -163,8 +175,8 @@ class STSP(object):
         eccentricity, omega = self.transit_params.ecc, self.transit_params.w
         ecosw = eccentricity*np.cos(np.radians(omega))
         esinw = eccentricity*np.sin(np.radians(omega))
-        start_time = times[0]#self.lc.times.jd[0]
-        lc_duration = times[-1] - times[0]#self.lc.times.jd[-1] - self.lc.times.jd[0]
+        start_time = times[0]
+        lc_duration = times[-1] - times[0]
         nonlinear_ld = quadratic_to_nonlinear(*self.transit_params.u)
         nonlinear_ld_string = ' '.join(map("{0:.5f}".format, nonlinear_ld))
 
@@ -198,48 +210,21 @@ class STSP(object):
         with open(os.path.join(self.outdir, 'test.in'), 'w') as in_file:
             in_file.write(in_file_text)
 
-        # Run STSP
-        # old_cwd = os.getcwd()
-        # os.chdir(self.outdir)
-
-        # stdout = subprocess.check_output(stsp_exec + ' test.in',
-        #                                  #cwd=self.outdir,
-        #                                  shell=True)
-        # print(stdout)
-
-
-        # if not verbose:
-        # stdout = subprocess.check_output([stsp_exec, 'test.in'],
-        #                                  #cwd=self.outdir,
-        #                                  shell=True)
-
-
-        # subprocess.check_call([stsp_exec, 'test.in'],
-        #                        cwd=self.outdir, shell=True)
-        #if verbose:
-        #    print(stdout)
-
-        #     subprocess.check_call([stsp_exec, 'test.in'])
-        # else:
-        #     stdout = subprocess.check_output([stsp_exec, 'test.in'])
-        #     print(stdout.decode('ascii'))
         try:
-            #subprocess.check_output([stsp_exec, 'test.in'], cwd=self.outdir)
             stdout = subprocess.check_output([stsp_exec, 'test.in'], cwd=self.outdir)
         except subprocess.CalledProcessError as err:
-            pass#print("Failed. Error:", err.output, err.stderr, err.stdout)
+            pass  #print("Failed. Error:", err.output, err.stderr, err.stdout)
 
-
-        # os.chdir(old_cwd)
         time.sleep(0.01)
         # Read the outputs
         if os.stat(os.path.join(self.outdir, 'test_lcout.txt')).st_size == 0:
-            stsp_times = self.lc.times.jd
-            stsp_fluxes = np.ones_like(self.lc.fluxes)
-            stsp_flag = 0 * np.ones_like(self.lc.fluxes)
+            stsp_times = self.times.jd
+            stsp_fluxes = np.ones_like(self.times)
+            stsp_flag = 0 * np.ones_like(self.times)
 
         else:
-            tbl = ascii.read(os.path.join(self.outdir, 'test_lcout.txt'), format='fast_no_header')
+            tbl = ascii.read(os.path.join(self.outdir, 'test_lcout.txt'),
+                             format='fast_no_header')
             stsp_times, stsp_fluxes, stsp_flag = tbl['col1'], tbl['col4'], tbl['col5']
         return LightCurve(times=stsp_times, fluxes=stsp_fluxes, quarters=stsp_flag)
 

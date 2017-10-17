@@ -13,7 +13,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import shutil
-import batman
+#import batman
 
 
 def generate_lc_depth(times, depth, transit_params):
@@ -87,7 +87,7 @@ class LightCurve(object):
         return phase
 
     def plot(self, transit_params=None, ax=None, quarter=None, show=True,
-             phase=False, plot_kwargs={'color':'b', 'marker':'o', 'lw':0}):
+             phase=False, plot_kwargs={'color':'k', 'lw':1}):
         """
         Plot light curve.
 
@@ -129,8 +129,9 @@ class LightCurve(object):
         ax.plot(x[mask], self.fluxes[mask],
                 **plot_kwargs)
         ax.set(xlabel='Time' if not phase else 'Phase',
-               ylabel='Flux', title=self.name)
-
+               ylabel='Flux')
+        if self.name is not None:
+            ax.set_title(self.name)
         if show:
             plt.show()
 
@@ -452,237 +453,3 @@ class LightCurve(object):
                                 exp_time=exp_time)
         model_flux = m.light_curve(transit_params)
         return model_flux
-
-
-class TransitLightCurve(LightCurve):
-    """
-    Container for a single transit light curve. Subclass of `LightCurve`.
-    """
-    def __init__(self, times=None, fluxes=None, errors=None, quarters=None,
-                 name=None):
-        """
-        Parameters
-        ----------
-        times : `~numpy.ndarray`
-            Times in JD
-        fluxes : `~numpy.ndarray`
-            Fluxes (normalized or not)
-        errors : `~numpy.ndarray`
-            Uncertainties on the fluxes
-        quarters : `~numpy.ndarray` (optional)
-            Kepler Quarter for each flux
-        name : str
-            Name this light curve (optional)
-        """
-
-        if isinstance(times[0], Time) and isinstance(times, np.ndarray):
-            times = Time(times)
-        elif not isinstance(times, Time):
-            times = Time(times, format='jd')
-        self.times = times
-        self.fluxes = fluxes
-        self.errors = errors
-        if self.times is not None and quarters is None:
-            quarters = np.zeros_like(self.fluxes) - 1
-        self.quarters = quarters
-        self.name = name
-        self.rescaled = False
-
-    def fit_linear_baseline(self, params, cadence=1*u.min,
-                            return_near_transit=False, plots=False):
-        """
-        Find OOT portions of transit light curve using similar method to
-        `LightCurve.mask_out_of_transit`, fit linear baseline to OOT.
-
-        Parameters
-        ----------
-        params : `~batman.TransitParams`
-            Transit light curve parameters. Requires that `params.duration`
-            is defined.
-        cadence : `~astropy.units.Quantity` (optional)
-            Length of the exposure time for each flux. Default is 1 min.
-        return_near_transit : bool (optional)
-            Return the mask for times in-transit.
-
-        Returns
-        -------
-        linear_baseline : `numpy.ndarray`
-            Baseline trend of out-of-transit fluxes
-        near_transit : `numpy.ndarray` (optional)
-            The mask for times in-transit.
-        """
-        cadence_buffer = cadence.to(u.day).value
-        get_oot_duration_fraction = 0
-        phased = (self.times.jd - params.t0) % params.per
-        near_transit = ((phased < params.duration *
-                         (0.5 + get_oot_duration_fraction) + cadence_buffer) |
-                        (phased > params.per - params.duration *
-                         (0.5 + get_oot_duration_fraction) - cadence_buffer))
-
-        # Remove linear baseline trend
-        order = 1
-        linear_baseline = np.polyfit(self.times.jd[-near_transit],
-                                     self.fluxes[-near_transit], order)
-        linear_baseline_fit = np.polyval(linear_baseline, self.times.jd)
-
-        if plots:
-            fig, ax = plt.subplots(1, 2, figsize=(15,6))
-            ax[0].axhline(1, ls='--', color='k')
-            ax[0].plot(self.times.jd, linear_baseline_fit, 'r')
-            ax[0].plot(self.times.jd, self.fluxes, 'bo')
-            plt.show()
-
-        if return_near_transit:
-            return linear_baseline, near_transit
-        else:
-            return linear_baseline
-
-    def remove_linear_baseline(self, params, plots=False, cadence=1*u.min):
-        """
-        Find OOT portions of transit light curve using similar method to
-        `LightCurve.mask_out_of_transit`, fit linear baseline to OOT,
-        divide whole light curve by that fit.
-
-        Parameters
-        ----------
-        params : `~batman.TransitParams`
-            Transit light curve parameters. Requires that `params.duration`
-            is defined.
-        cadence : `~astropy.units.Quantity` (optional)
-            Length of the exposure time for each flux. Default is 1 min.
-        plots : bool (optional)
-            Show diagnostic plots.
-        """
-
-        linear_baseline, near_transit = self.fit_linear_baseline(params,
-                                                                 cadence=cadence,
-                                                                 return_near_transit=True)
-        linear_baseline_fit = np.polyval(linear_baseline, self.times.jd)
-        self.fluxes =  self.fluxes/linear_baseline_fit
-        self.errors = self.errors/linear_baseline_fit
-
-        if plots:
-            fig, ax = plt.subplots(1, 2, figsize=(15,6))
-            ax[0].axhline(1, ls='--', color='k')
-            ax[0].plot(self.times.jd, self.fluxes, 'o')
-            ax[0].set_title('before trend removal')
-
-            ax[1].set_title('after trend removal')
-            ax[1].axhline(1, ls='--', color='k')
-            ax[1].plot(self.times.jd, self.fluxes, 'o')
-            plt.show()
-
-    def scale_by_baseline(self, linear_baseline_params):
-        if not self.rescaled:
-            scaling_vector = np.polyval(linear_baseline_params, self.times.jd)
-            self.fluxes *= scaling_vector
-            self.errors *= scaling_vector
-            self.rescaled = True
-
-
-    def fit_polynomial_baseline(self, params, order=2, cadence=1*u.min,
-                                plots=False, mask=None):
-        """
-        Find OOT portions of transit light curve using similar method to
-        `LightCurve.mask_out_of_transit`, fit linear baseline to OOT
-        """
-        if mask is None:
-            mask = np.ones(len(self.fluxes)).astype(bool)
-        cadence_buffer = cadence.to(u.day).value
-        get_oot_duration_fraction = 0
-        phased = (self.times.jd[mask] - params.t0) % params.per
-        near_transit = ((phased < params.duration*(0.5 + get_oot_duration_fraction) + cadence_buffer) |
-                        (phased > params.per - params.duration*(0.5 + get_oot_duration_fraction) - cadence_buffer))
-
-        # Remove polynomial baseline trend after subtracting the times by its
-        # mean -- this improves numerical stability for polyfit
-        downscaled_times = self.times.jd - self.times.jd.mean()
-        polynomial_baseline = np.polyfit(downscaled_times[mask][-near_transit],
-                                         self.fluxes[mask][-near_transit], order)
-        polynomial_baseline_fit = np.polyval(polynomial_baseline, downscaled_times)
-
-        if plots:
-            fig, ax = plt.subplots(1, 2, figsize=(15,6))
-            ax[0].axhline(1, ls='--', color='k')
-            ax[0].plot(self.times.jd, polynomial_baseline_fit, 'r')
-            ax[0].plot(self.times.jd, self.fluxes, 'bo')
-            if mask is not None:
-                ax[0].plot(self.times.jd[~mask], self.fluxes[~mask], 'ro')
-            plt.show()
-
-        return polynomial_baseline_fit
-
-    def subtract_polynomial_baseline(self, params, plots=False, order=2,
-                                     cadence=1*u.min):
-        """
-        Find OOT portions of transit light curve using similar method to
-        `LightCurve.mask_out_of_transit`, fit polynomial baseline to OOT,
-        subtract whole light curve by that fit.
-        """
-
-        polynomial_baseline_fit = self.fit_polynomial_baseline(cadence=cadence,
-                                                               order=order,
-                                                               params=params)
-        self.fluxes = self.fluxes - polynomial_baseline_fit
-        self.errors = self.errors
-
-        if plots:
-            fig, ax = plt.subplots(1, 2, figsize=(15,6))
-            ax[0].axhline(1, ls='--', color='k')
-            ax[0].plot(self.times.jd, self.fluxes, 'o')
-            #ax[0].plot(self.times.jd[near_transit], self.fluxes[near_transit], 'ro')
-            ax[0].set_title('before trend removal')
-
-            ax[1].set_title('after trend removal')
-            ax[1].axhline(1, ls='--', color='k')
-            ax[1].plot(self.times.jd, self.fluxes, 'o')
-            plt.show()
-
-
-    def subtract_add_divide_without_outliers(self, params, quarterly_max,
-                                             order=2, cadence=1*u.min,
-                                             outlier_error_multiplier=50,
-                                             outlier_tolerance_depth_factor=0.20,
-                                             plots=False):
-
-        init_baseline_fit = self.fit_polynomial_baseline(order=order,
-                                                         cadence=cadence,
-                                                         params=params)
-
-        # Subtract out a transit model
-        transit_model = generate_lc_depth(self.times_jd, params.rp**2, params)
-
-        lower_outliers = (transit_model*init_baseline_fit - self.fluxes >
-                          self.fluxes.mean() * outlier_tolerance_depth_factor *
-                          params.rp**2)
-
-        self.errors[lower_outliers] *= outlier_error_multiplier
-
-        final_baseline_fit = self.fit_polynomial_baseline(order=order,
-                                                          cadence=cadence,
-                                                          params=params,
-                                                          mask=~lower_outliers)
-
-        self.fluxes = self.fluxes - final_baseline_fit
-        self.fluxes += quarterly_max
-        self.fluxes /= quarterly_max
-        self.errors /= quarterly_max
-
-        if plots:
-            plt.errorbar(self.times.jd, self.fluxes, self.errors, fmt='o')
-            plt.plot(self.times.jd[lower_outliers],
-                     self.fluxes[lower_outliers], 'rx')
-            plt.show()
-
-    @classmethod
-    def from_dir(cls, path):
-        """Load light curve from numpy save files in ``path``"""
-        times, fluxes, errors, quarters = [np.loadtxt(os.path.join(path, '{0}.txt'.format(attr)))
-                                           for attr in ['times_jd', 'fluxes', 'errors', 'quarters']]
-
-        if os.sep in path:
-            name = path.split(os.sep)[-1]
-        else:
-            name = path
-        return cls(times, fluxes, errors, quarters=quarters, name=name)
-
