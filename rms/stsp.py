@@ -118,15 +118,19 @@ def find_overlapping_spots(spot_list, tolerance=1.01):
 
     spots_without_overlap = [spot for i, spot in enumerate(spot_list)
                              if i not in spots_with_overlap]
-    save_these_spots = [i[0] for i in overlapping_pairs]
-    half_of_overlapping_pair = [spot for i, spot in enumerate(spot_list)
-                                if i in save_these_spots]
+    save_these_spot_indices = [i[0] for i in overlapping_pairs]
+    toss_these_spot_indices = [i[1] for i in overlapping_pairs]
+    save_these_spots = [spot for i, spot in enumerate(spot_list)
+                        if i in save_these_spot_indices]
+    toss_these_spots = [spot for i, spot in enumerate(spot_list)
+                        if i in toss_these_spot_indices]
     if len(spots_with_overlap) > 0:
         warning_message = ('Some spots were overlapping. Tossing one of the two'
-                           ' overlapping spots.')
+                           ' overlapping spots. \n\nSpots tossed:\n\n' +
+                           '\n'.join(map(str, toss_these_spots)))
         warn(warning_message, OverlappingSpotsWarning)
 
-    return spots_without_overlap + half_of_overlapping_pair
+    return spots_without_overlap + save_these_spots
 
 
 class STSP(object):
