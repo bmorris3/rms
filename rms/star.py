@@ -69,14 +69,17 @@ class Spot(object):
 
     @property
     def r(self):
+        """Spot radius (alias)"""
         return self.radius
 
     @property
     def theta(self):
+        """Spot ``theta`` [radians] where ``theta = 90 deg - latitude``"""
         return np.pi/2 - self.latitude.to(u.rad).value
 
     @property
     def phi(self):
+        """Spot ``phi`` [radians] where ``phi = longitude``"""
         return self.longitude.to(u.rad).value
 
     def __repr__(self):

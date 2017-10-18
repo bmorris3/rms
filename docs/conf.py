@@ -19,6 +19,7 @@
 
 import os
 import sys
+from os import path
 
 package_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                             os.path.pardir, '.')
@@ -182,7 +183,16 @@ texinfo_documents = [
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/': None}
-intersphinx_mapping['astropy'] = ('http://astropy.readthedocs.io/en/stable/', None)
-intersphinx_mapping['matplotlib'] = ('https://matplotlib.org/contents.html', None)
-intersphinx_mapping['numpy'] = ('https://docs.scipy.org/doc/numpy/', None)
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3/',
+               (None, 'http://data.astropy.org/intersphinx/python3.inv')),
+    'pythonloc': ('http://docs.python.org/',
+                  path.abspath(path.join(path.dirname(__file__),
+                                         'local/python3_local_links.inv'))),
+    'numpy': ('https://docs.scipy.org/doc/numpy/',
+              (None, 'http://data.astropy.org/intersphinx/numpy.inv')),
+    'scipy': ('https://docs.scipy.org/doc/scipy/reference/',
+              (None, 'http://data.astropy.org/intersphinx/scipy.inv')),
+    'matplotlib': ('http://matplotlib.org/',
+                   (None, 'http://data.astropy.org/intersphinx/matplotlib.inv')),
+    'astropy': ('http://docs.astropy.org/en/stable/', None)}
