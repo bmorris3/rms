@@ -6,3 +6,4 @@ from .lightcurve import *
 from .stsp import *
 from .star import *
 from .exceptions import *
+from .spot import *
