@@ -54,7 +54,7 @@ class Spot(object):
                                                           self.radius)
 
     def plot(self, ax=None, projection='hammer',
-             plot_kwargs=dict(marker=',', color='k')):
+             plot_kwargs=dict(marker=',', color='k', lw=0)):
         """
         Make a simple plot of this spot.
 
@@ -77,7 +77,7 @@ class Spot(object):
         phi = Angle(self.longitude).wrap_at(np.pi*u.rad)
         theta = (np.pi/2 * u.rad - self.latitude)
 
-        lat, lon = rtp_to_edge(self.radius, phi, theta)
+        lat, lon = rtp_to_edge(self.radius, theta, phi)
         ax.plot(lon, lat, **plot_kwargs)
         ax.grid()
         return ax
