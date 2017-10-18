@@ -12,7 +12,7 @@ from threading import Lock
 
 lock = Lock()
 
-stsp_executable = os.getenv('STSP_EXECUTABLE') # 07
+stsp_executable = os.getenv('STSP_EXECUTABLE')
 
 infile_template_l = """#PLANET PROPERTIES
 1							; Number of planets -- (if there are more than 1 planet, then the set of 8 planet properties are repeated)
@@ -58,23 +58,12 @@ def quadratic_to_nonlinear(u1, u2):
     a1 = a3 = 0
     a2 = u1 + 2*u2
     a4 = -u2
-    return (a1, a2, a3, a4)
+    return a1, a2, a3, a4
 
 
-def rho_star(transit_params):
-    import astropy.units as u
-    from astropy.constants import G, M_sun, R_sun
-    """Calculate stellar density from MCMC chain samples"""
-
-    aRs = transit_params.a
-
-    rho_s = 3*np.pi/(G*(transit_params.per*u.day)**2) * aRs**3
-    rho_s = rho_s.to(M_sun/(4./3 * np.pi * R_sun**3))
-    return rho_s.value
-
-
-def clean_up(require_input=False):
-    paths_to_clean = glob(os.path.abspath(os.path.join(os.path.dirname(__file__), '.rms_tmp_*')))
+def _clean_up(require_input=False):
+    paths_to_clean = glob(os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                                       '.rms_tmp_*')))
     if require_input:
         user_input = input("Delete following paths [y]/n: \n" +
                            '\n'.join(paths_to_clean))
@@ -86,7 +75,7 @@ def clean_up(require_input=False):
             shutil.rmtree(directory)
 
 
-def spot_obj_to_params(spot):
+def _spot_obj_to_params(spot):
     if hasattr(spot, '__len__'):
         return np.concatenate([[s.r, s.theta, s.phi] for s in spot])
     else:
@@ -112,7 +101,7 @@ class STSP(object):
         """
         self.times = times
         self.star = star
-        self.spot_params = spot_obj_to_params(spot)
+        self.spot_params = _spot_obj_to_params(spot)
         self.spot_contrast = self.star.spot_contrast
 
         current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
@@ -120,11 +109,11 @@ class STSP(object):
 
         if outdir is None:
             self.outdir = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                          '.rms_tmp_{0}_{1}'.format(current_time, random_integer)))
+                                          '.rms_tmp_{0}_{1}'
+                                          .format(current_time, random_integer)))
         else:
             self.outdir = outdir
 
-        #if not os.path.exists(self.outdir):
         os.makedirs(self.outdir)
 
         self.model_path = os.path.join(self.outdir, 'model_lc.dat')
@@ -134,10 +123,8 @@ class STSP(object):
         return self
 
     def __exit__(self, *args):
-        #self.safe_clean_up()
         if not self.keep_dir:
             shutil.rmtree(self.outdir)
-            #clean_up()
 
     def safe_clean_up(self):
         paths_to_delete = ['model_lc.dat', 'test.in', 'xyzdetail.txt',
@@ -147,9 +134,27 @@ class STSP(object):
             if os.path.exists(abspath):
                 os.remove(abspath)
 
-    def generate_lightcurve(self, n_ld_rings=40, verbose=False, t_bypass=False,
+    def generate_lightcurve(self, n_ld_rings=40, t_bypass=False,
                             stsp_exec=None):
-        #self.safe_clean_up()
+        """
+        Generate a light curve with STSP.
+
+        Parameters
+        ----------
+        n_ld_rings : int
+            Number of concentric rings to use in the limb-darkening
+            approximation
+        t_bypass : bool (optional)
+            Bypass the times [diagnostic tool, not for public consumption]
+        stsp_exec : str (optional)
+            Optionally pass in a path to a different STSP executable with this
+            argument.
+
+        Return
+        ------
+        lc : `~rms.LightCurve`
+            Light curve object with the model from STSP.
+        """
 
         if stsp_exec is None:
             stsp_exec = stsp_executable
@@ -157,7 +162,6 @@ class STSP(object):
         # Normalize light curve to unity
         real_max = 1
 
-        t_buffer = 0.08
         n_transits = np.rint(np.median((self.star.t0 -
                                         self.times.jd) /
                                        self.star.per))
@@ -182,7 +186,7 @@ class STSP(object):
         nonlinear_ld_string = ' '.join(map("{0:.5f}".format, nonlinear_ld))
 
         # get spot parameters sorted out
-        spot_params_str = spot_params_to_string(self.spot_params)
+        spot_params_str = _spot_params_to_string(self.spot_params)
 
         # Stick those values into the template file
 
@@ -191,8 +195,7 @@ class STSP(object):
                            tilt_from_z=90-self.star.inc_stellar,
                            start_time=start_time, lc_duration=lc_duration,
                            real_max=real_max, per_rot=self.star.per_rot,
-                           rho_s=rho_star(self.star),
-                           depth=self.star.rp ** 2,
+                           rho_s=1.0, depth=self.star.rp ** 2,
                            duration=self.star.duration,
                            t0=self.star.t0, b=self.star.b,
                            inclination=self.star.inc,
@@ -228,7 +231,7 @@ class STSP(object):
         return LightCurve(times=stsp_times, fluxes=stsp_fluxes, quarters=stsp_flag)
 
 
-def spot_params_to_string(spot_params):
+def _spot_params_to_string(spot_params):
     spot_params_str = ""
     for param_set in np.split(spot_params, len(spot_params)/3):
         spot_params_str += spot_params_template.format(spot_radius=param_set[0],
