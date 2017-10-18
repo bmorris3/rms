@@ -10,6 +10,8 @@ from .lightcurve import LightCurve
 
 from threading import Lock
 
+__all__ = ['STSP']
+
 lock = Lock()
 
 stsp_executable = os.getenv('STSP_EXECUTABLE')
