@@ -4,5 +4,5 @@
 Reference/API
 *************
 
-.. automodapi:: mrspoc
+.. automodapi:: rms
 
