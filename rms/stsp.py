@@ -134,8 +134,7 @@ class STSP(object):
             if os.path.exists(abspath):
                 os.remove(abspath)
 
-    def generate_lightcurve(self, n_ld_rings=40, t_bypass=False,
-                            stsp_exec=None):
+    def generate_lightcurve(self, n_ld_rings=40, stsp_exec=None):
         """
         Generate a light curve with STSP.
 
@@ -144,8 +143,6 @@ class STSP(object):
         n_ld_rings : int
             Number of concentric rings to use in the limb-darkening
             approximation
-        t_bypass : bool (optional)
-            Bypass the times [diagnostic tool, not for public consumption]
         stsp_exec : str (optional)
             Optionally pass in a path to a different STSP executable with this
             argument.
@@ -165,10 +162,8 @@ class STSP(object):
         n_transits = np.rint(np.median((self.star.t0 -
                                         self.times.jd) /
                                        self.star.per))
-        if not t_bypass: 
-            times = self.times.jd + n_transits*self.star.per
-        else: 
-            times = self.times.jd
+
+        times = self.times.jd
         fluxes = np.ones_like(times)
 
         np.savetxt(self.model_path,
@@ -215,7 +210,7 @@ class STSP(object):
         try:
             stdout = subprocess.check_output([stsp_exec, 'test.in'], cwd=self.outdir)
         except subprocess.CalledProcessError as err:
-            pass  #print("Failed. Error:", err.output, err.stderr, err.stdout)
+            pass  # print("Failed. Error:", err.output, err.stderr, err.stdout)
 
         time.sleep(0.01)
         # Read the outputs
@@ -228,7 +223,7 @@ class STSP(object):
             tbl = ascii.read(os.path.join(self.outdir, 'test_lcout.txt'),
                              format='fast_no_header')
             stsp_times, stsp_fluxes, stsp_flag = tbl['col1'], tbl['col4'], tbl['col5']
-        return LightCurve(times=stsp_times, fluxes=stsp_fluxes, quarters=stsp_flag)
+        return LightCurve(times=stsp_times, fluxes=stsp_fluxes.data, quarters=stsp_flag)
 
 
 def _spot_params_to_string(spot_params):
