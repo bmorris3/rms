@@ -195,4 +195,5 @@ intersphinx_mapping = {
               (None, 'http://data.astropy.org/intersphinx/scipy.inv')),
     'matplotlib': ('http://matplotlib.org/',
                    (None, 'http://data.astropy.org/intersphinx/matplotlib.inv')),
-    'astropy': ('http://docs.astropy.org/en/stable/', None)}
+    'astropy': ('http://docs.astropy.org/en/stable/', None),
+    'rms': ('http://lightcurve-rms.readthedocs.io/en/latest/', None)}
