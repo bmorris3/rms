@@ -5,3 +5,4 @@ from __future__ import (absolute_import, division, print_function,
 from .lightcurve import *
 from .stsp import *
 from .star import *
+from .exceptions import *

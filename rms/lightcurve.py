@@ -1,4 +1,4 @@
-# Licensed under the MIT License - see LICENSE.rst
+# Licensed under the MIT License - see LICENSE
 """
 Methods for taking the raw light curves from MAST and producing cleaned light
 curves.

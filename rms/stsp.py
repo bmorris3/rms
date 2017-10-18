@@ -3,12 +3,16 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from glob import glob
 import datetime
+from threading import Lock
+from warnings import warn
 import os, subprocess, shutil, time
+
 import numpy as np
 from astropy.io import ascii
-from .lightcurve import LightCurve
 
-from threading import Lock
+from .lightcurve import LightCurve
+from .exceptions import OverlappingSpotsWarning
+
 
 __all__ = ['STSP']
 
@@ -78,10 +82,51 @@ def _clean_up(require_input=False):
 
 
 def _spot_obj_to_params(spot):
+
     if hasattr(spot, '__len__'):
-        return np.concatenate([[s.r, s.theta, s.phi] for s in spot])
+        validated_spot_list = find_overlapping_spots(spot)
+        return np.concatenate([[s.r, s.theta, s.phi]
+                               for s in validated_spot_list])
     else:
         return np.array([spot.r, spot.theta, spot.phi])
+
+
+def find_overlapping_spots(spot_list, tolerance=1.01):
+    """
+    Find overlapping spots in a list of spot objects.
+
+    Parameters
+    ----------
+    spot_list : list
+    tolerance : float
+    """
+    overlapping_pairs = []
+    spots_with_overlap = []
+    for i in range(len(spot_list)):
+        for j in range(len(spot_list)):
+            if i < j:
+                sep = np.arccos(np.cos(spot_list[i].theta) * np.cos(spot_list[j].theta) +
+                                np.sin(spot_list[i].theta) * np.sin(spot_list[j].theta) *
+                                np.cos(spot_list[i].phi - spot_list[j].phi))
+                if sep < tolerance * (spot_list[i].r + spot_list[j].r):
+                    overlapping_pairs.append((i, j))
+
+                    if i not in spots_with_overlap:
+                        spots_with_overlap.append(i)
+                    if j not in spots_with_overlap:
+                        spots_with_overlap.append(j)
+
+    spots_without_overlap = [spot for i, spot in enumerate(spot_list)
+                             if i not in spots_with_overlap]
+    save_these_spots = [i[0] for i in overlapping_pairs]
+    half_of_overlapping_pair = [spot for i, spot in enumerate(spot_list)
+                                if i in save_these_spots]
+    if len(spots_with_overlap) > 0:
+        warning_message = ('Some spots were overlapping. Tossing one of the two'
+                           ' overlapping spots.')
+        warn(warning_message, OverlappingSpotsWarning)
+
+    return spots_without_overlap + half_of_overlapping_pair
 
 
 class STSP(object):
