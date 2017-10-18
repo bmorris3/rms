@@ -8,7 +8,7 @@ setup(name='rms',
       author='Brett Morris',
       author_email='bmmorris@uw.edu',
       license='MIT',
-      url='https://github.com/bmorris3/mrspoc',
+      url='https://github.com/bmorris3/rms',
       zip_safe=False,
       use_2to3=False,
 )

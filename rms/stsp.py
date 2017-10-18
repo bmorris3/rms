@@ -35,7 +35,7 @@ infile_template_l = """#PLANET PROPERTIES
 {n_ld_rings:d}			; number of rings for limb darkening appoximation
 #SPOT PROPERTIES
 {n_spots}						; number of spots
-0.7					; fractional lightness of spots (0.0=total dark, 1.0=same as star)
+{spot_contrast}					; fractional lightness of spots (0.0=total dark, 1.0=same as star)
 #LIGHT CURVE
 {model_path}			; lightcurve input data file
 {start_time:2.10f}		; start time to start fitting the light curve
@@ -97,13 +97,13 @@ class STSP(object):
     """
     Context manager for working with STSP
     """
-    def __init__(self, times, transit_params, spot, outdir=None, keep_dir=False):
+    def __init__(self, times, star, spot, outdir=None, keep_dir=False):
         """
         Parameters
         ----------
         times : `~astropy.time.Time`
             Time array object
-        transit_params : `~rms.Star`
+        star : `~rms.Star`
             Parameters for star
         spot : `~rms.Spot` or list of `~rms.Spot` objects
             Spot parameter object(s)
@@ -111,8 +111,9 @@ class STSP(object):
             Directory to write temporary outputs into
         """
         self.times = times
-        self.transit_params = transit_params
+        self.star = star
         self.spot_params = spot_obj_to_params(spot)
+        self.spot_contrast = self.star.spot_contrast
 
         current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         random_integer = np.random.randint(0, 1e6)
@@ -157,11 +158,11 @@ class STSP(object):
         real_max = 1
 
         t_buffer = 0.08
-        n_transits = np.rint(np.median((self.transit_params.t0 -
+        n_transits = np.rint(np.median((self.star.t0 -
                                         self.times.jd) /
-                                       self.transit_params.per))
+                                       self.star.per))
         if not t_bypass: 
-            times = self.times.jd + n_transits*self.transit_params.per
+            times = self.times.jd + n_transits*self.star.per
         else: 
             times = self.times.jd
         fluxes = np.ones_like(times)
@@ -172,12 +173,12 @@ class STSP(object):
                    fmt=str('%1.10f'), delimiter='\t', header='stspinputs')
 
         # Calculate parameters for STSP:
-        eccentricity, omega = self.transit_params.ecc, self.transit_params.w
+        eccentricity, omega = self.star.ecc, self.star.w
         ecosw = eccentricity*np.cos(np.radians(omega))
         esinw = eccentricity*np.sin(np.radians(omega))
         start_time = times[0]
         lc_duration = times[-1] - times[0]
-        nonlinear_ld = quadratic_to_nonlinear(*self.transit_params.u)
+        nonlinear_ld = quadratic_to_nonlinear(*self.star.u)
         nonlinear_ld_string = ' '.join(map("{0:.5f}".format, nonlinear_ld))
 
         # get spot parameters sorted out
@@ -185,26 +186,24 @@ class STSP(object):
 
         # Stick those values into the template file
 
-        in_file_text = infile_template_l.format(period=self.transit_params.per,
-                                              ecosw=ecosw,
-                                              esinw=esinw,
-                                              lam=self.transit_params.lam,
-                                              tilt_from_z=90-self.transit_params.inc_stellar,
-                                              start_time=start_time,
-                                              lc_duration=lc_duration,
-                                              real_max=real_max,
-                                              per_rot=self.transit_params.per_rot,
-                                              rho_s=rho_star(self.transit_params),
-                                              depth=self.transit_params.rp**2,
-                                              duration=self.transit_params.duration,
-                                              t0=self.transit_params.t0,
-                                              b=self.transit_params.b,
-                                              inclination=self.transit_params.inc,
-                                              nonlinear_ld=nonlinear_ld_string,
-                                              n_ld_rings=n_ld_rings,
-                                              spot_params=spot_params_str[:-1],
-                                              n_spots=int(len(self.spot_params)/3),
-                                              model_path=os.path.basename(self.model_path))
+        params_dict = dict(period=self.star.per, ecosw=ecosw,
+                           esinw=esinw, lam=self.star.lam,
+                           tilt_from_z=90-self.star.inc_stellar,
+                           start_time=start_time, lc_duration=lc_duration,
+                           real_max=real_max, per_rot=self.star.per_rot,
+                           rho_s=rho_star(self.star),
+                           depth=self.star.rp ** 2,
+                           duration=self.star.duration,
+                           t0=self.star.t0, b=self.star.b,
+                           inclination=self.star.inc,
+                           nonlinear_ld=nonlinear_ld_string,
+                           n_ld_rings=n_ld_rings,
+                           spot_params=spot_params_str[:-1],
+                           n_spots=int(len(self.spot_params)/3),
+                           model_path=os.path.basename(self.model_path),
+                           spot_contrast=self.spot_contrast)
+
+        in_file_text = infile_template_l.format(**params_dict)
 
         # Write out the `.in` file
         with open(os.path.join(self.outdir, 'test.in'), 'w') as in_file:

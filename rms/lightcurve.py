@@ -86,19 +86,17 @@ class LightCurve(object):
         phase[phase > 0.5] -= 1.0
         return phase
 
-    def plot(self, transit_params=None, ax=None, quarter=None, show=True,
-             phase=False, plot_kwargs={'color':'k', 'lw':1}):
+    def plot(self, star=None, ax=None, show=True,
+             phase=None, plot_kwargs={'color':'k', 'lw':0, 'marker':'.'}):
         """
         Plot light curve.
 
         Parameters
         ----------
-        transit_params : `~batman.TransitParams` (optional)
-            Transit light curve parameters. Required if `phase` is `True`.
+        star : `~rms.Star` (optional)
+            Star parameters. Required if `phase` is `True`.
         ax : `~matplotlib.axes.Axes` (optional)
             Axis to make plot on top of
-        quarter : float (optional)
-            Plot only this Kepler quarter
         show : bool
             If `True`, call `matplotlib.pyplot.show` after plot is made
         phase : bool
@@ -107,33 +105,30 @@ class LightCurve(object):
         plot_kwargs : dict
             Keyword arguments to pass to `~matplotlib` calls.
         """
-        if quarter is not None:
-            if hasattr(quarter, '__len__'):
-                mask = np.zeros_like(self.fluxes).astype(bool)
-                for q in quarter:
-                    mask |= self.quarters == q
-            else:
-                mask = self.quarters == quarter
-        else:
-            mask = np.ones_like(self.fluxes).astype(bool)
-
         if ax is None:
             ax = plt.gca()
 
-        if phase:
-            x = (self.times.jd - transit_params.t0)/transit_params.per % 1
-            x[x > 0.5] -= 1
-        else:
-            x = self.times.jd
+        if star is not None and phase is None:
+            phase = True
 
-        ax.plot(x[mask], self.fluxes[mask],
-                **plot_kwargs)
-        ax.set(xlabel='Time' if not phase else 'Phase',
-               ylabel='Flux')
+        if phase:
+            x = (self.times.jd - star.t0)/star.per_rot % 1
+            first_half = x < 0.5
+            second_half = x >= 0.5
+            ax.plot(x[second_half] - 1, self.fluxes[second_half], '.', color='gray', alpha=0.5)
+            ax.plot(x[first_half] + 1, self.fluxes[first_half], '.', color='gray', alpha=0.5)
+            ax.plot(x, self.fluxes, **plot_kwargs)
+
+        else:
+            ax.plot(self.times.jd, self.fluxes, **plot_kwargs)
+
+        ax.set(xlabel='Time' if not phase else 'Phase', ylabel='Flux')
+
         if self.name is not None:
             ax.set_title(self.name)
         if show:
             plt.show()
+        return ax
 
     def save_to(self, path, overwrite=False, for_stsp=False):
         """

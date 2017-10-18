@@ -10,7 +10,7 @@ class Star(object):
     A ``batman.TransitParams``-like object for stellar parameters, to use as
     inputs for STSP.
     """
-    def __init__(self, rotation_period, inc_stellar, u=[0.2, 0.1],
+    def __init__(self, rotation_period, inc_stellar, spot_contrast, u=[0.2, 0.1],
                  limb_dark='quadratic'):
         """
         Parameters
@@ -20,11 +20,13 @@ class Star(object):
         inc_stellar : float
             Stellar inclination (measured away from observer's line-of-sight)
             in units of degrees
+        spot_contrast : float
+            Relative intensity of a spot to the photosphere (0==perfectly dark,
+            1==same as photosphere)
         u : list
             Limb darkening parameters
         limb_dark : str
             Limb darkening law
-        :return:
         """
         self.per = 100
         self.inc = 0
@@ -40,6 +42,7 @@ class Star(object):
         self.b = 2
         self.duration = 0.1
         self.per_rot = rotation_period
+        self.spot_contrast = spot_contrast
 
 
 class Spot(object):
