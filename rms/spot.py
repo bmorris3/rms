@@ -33,6 +33,13 @@ class Spot(object):
         lat, lon = generate_random_coord()
         return cls(lat, lon, radius)
 
+    @classmethod
+    def from_sunspot_distribution(cls):
+        lat = draw_random_sunspot_latitudes(n=1)[0]
+        lon = 2*np.pi * np.random.rand() * u.rad
+        radius = draw_random_sunspot_radii(n=1)[0]
+        return cls(lat, lon, radius)
+
     @property
     def r(self):
         """Spot radius (alias)"""
@@ -134,3 +141,111 @@ def generate_random_coord(n=1):
     if result.shape[0] == 1:
         return result[0]
     return result
+
+
+def sunspot_distribution(latitude):
+    """
+    Approximate un-normalized probability distribution of sunspots at
+    ``latitude`` near activity maximum on the Sun.
+
+    Parameters
+    ----------
+    latitude : `~numpy.ndarray`
+        Latitude
+
+    Returns
+    -------
+    p : `~numpy.ndarray
+        Probability (un-normalized)
+    """
+    return np.exp(-0.5 * (abs(latitude) - 15)**2 / 6**2)
+
+
+def sunspot_latitude_inverse_transform(x):
+    """
+    Use inverse transform sampling to randomly draw spot latitudes from the
+    sunspot latitude distribution, for a uniform random variate ``x`` on the
+    range [0,1).
+
+    Parameters
+    ----------
+    x : `~np.ndarray` or float
+        Uniform random variate on [0, 1)
+
+    Returns
+    -------
+    lat : `~astropy.units.Quantity`
+        Latitude of a sunspot drawn from the sunspot latitude distribution.
+    """
+    lats = np.linspace(-60, 60, 1000)
+    prob = np.cumsum(sunspot_distribution(lats))
+    prob /= np.max(prob)
+    return np.interp(x, prob, lats) * u.deg
+
+
+def draw_random_sunspot_latitudes(n):
+    """
+    Draw one or more random samples from the sunspot latitude distribution.
+
+    Parameters
+    ----------
+    n : int
+        Number of random sunspot latitudes to draw
+
+    Returns
+    -------
+    lat : `~astropy.units.Quantity`
+        Latitude of a sunspot drawn from the sunspot latitude distribution.
+    """
+    return sunspot_latitude_inverse_transform(np.random.rand(n))
+
+
+def sunspot_umbral_area_distribution(log_area_uhem):
+    """
+    Approximate log-normal distribution of sunspot umbral areas
+    """
+    return np.exp(-0.5 * (log_area_uhem - 4.1)**2 / 1.0**2)
+
+
+def sunspot_umbral_area_inverse_transform(x):
+    """
+    Use inverse transform sampling to randomly draw spot areas from the
+    sunspot umbral area distribution, for a uniform random variate ``x`` on the
+    range [0,1).
+
+    Parameters
+    ----------
+    x : `~np.ndarray` or float
+        Uniform random variate on [0, 1)
+
+    Returns
+    -------
+    umbral_areas : `~numpy.ndarray`
+        Umbral area(s) of sunspot(s) drawn from the sunspot umbral area
+        distribution.
+    """
+    log_areas_uhem = np.linspace(0, 9, 1000)
+    prob = np.cumsum(sunspot_umbral_area_distribution(log_areas_uhem))
+    prob /= np.max(prob)
+    return np.interp(x, prob, log_areas_uhem)
+
+
+def draw_random_sunspot_radii(n):
+    """
+    Draw one or more random samples from the sunspot radius distribution.
+
+    Parameters
+    ----------
+    n : int
+        Number of random sunspot radii to draw
+
+    Returns
+    -------
+    rspot_rstar : `~numpy.ndarray`
+        Radii of a sunspots drawn from the sunspot radius distribution,
+        in units of stellar radii.
+    """
+    umbral_areas_uhem = sunspot_umbral_area_inverse_transform(np.random.rand(n))
+    total_to_umbral_area = 5  # ratio of total spot area to area in umbra
+    rspot_rstar = np.sqrt(1e-6 * 2 * total_to_umbral_area * umbral_areas_uhem)
+    return rspot_rstar
