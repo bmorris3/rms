@@ -13,6 +13,7 @@ Welcome to rms's documentation!
    :caption: Contents:
 
    api
+   installation
 
 .. automodapi:: rms
 
