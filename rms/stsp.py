@@ -211,14 +211,6 @@ class STSP(object):
         if not self.keep_dir:
             shutil.rmtree(self.outdir)
 
-    def safe_clean_up(self):
-        paths_to_delete = ['model_lc.dat', 'test.in', 'xyzdetail.txt',
-                           'test_lcout.txt', 'test_errstsp.txt']
-        for path in paths_to_delete:
-            abspath = os.path.join(self.outdir, path)
-            if os.path.exists(abspath):
-                os.remove(abspath)
-
     def generate_lightcurve(self, n_ld_rings=40, stsp_exec=None):
         """
         Generate a light curve with STSP.

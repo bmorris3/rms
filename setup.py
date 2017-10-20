@@ -49,7 +49,7 @@ class CustomInstall(install):
     """Custom handler for the 'install' command."""
     def run(self):
         #paths = compile_and_install_software()
-        super().run()
+        super(CustomInstall, self).run()
         #os.rename(*paths)
 
 
