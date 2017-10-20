@@ -18,7 +18,10 @@ __all__ = ['STSP']
 
 lock = Lock()
 
-stsp_executable = os.getenv('STSP_EXECUTABLE')
+stsp_executable = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               'stsp_rms')
+
+#os.getenv('STSP_EXECUTABLE')
 
 infile_template_l = """#PLANET PROPERTIES
 1							; Number of planets -- (if there are more than 1 planet, then the set of 8 planet properties are repeated)
