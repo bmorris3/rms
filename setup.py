@@ -1,7 +1,4 @@
-from setuptools import setup, Extension
-
-
-
+from setuptools import setup
 import os
 import sys
 from setuptools.command.install import install
@@ -51,9 +48,9 @@ def compile_and_install_software():
 class CustomInstall(install):
     """Custom handler for the 'install' command."""
     def run(self):
-        paths = compile_and_install_software()
+        #paths = compile_and_install_software()
         super().run()
-        os.rename(*paths)
+        #os.rename(*paths)
 
 
 setup(name=packagename,
@@ -69,6 +66,5 @@ setup(name=packagename,
       packages=[packagename],
       include_package_data=True,
       package_data={"": ["LICENSE"]},
-#      data_files=[(packagename, [os.path.join('STSP', 'stsp.c')])],
       cmdclass={'install': CustomInstall}
 )
