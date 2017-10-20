@@ -12,6 +12,8 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import shutil
+import batman
+import astropy.units as u
 
 __all__ = ['LightCurve']
 
@@ -264,3 +266,50 @@ class LightCurve(object):
                 LightCurve(times=self.times[index:], fluxes=self.fluxes[index:], 
                            errors=self.errors[index:], quarters=self.quarters[index:], 
                            name=self.name))
+
+    def transit_model(self, star, short_cadence=False):
+        transit_params = star
+        # (1 * u.min).to(u.day).value
+        if short_cadence:
+            exp_time = (1 * u.min).to(u.day).value
+            supersample = 10
+        else:
+            exp_time = (6.019802903 * 10 * 30 * u.s).to(u.day).value
+            supersample = 10
+
+        m = batman.TransitModel(transit_params, self.times.jd,
+                                supersample_factor=supersample,
+                                exp_time=exp_time)
+        model_flux = m.light_curve(transit_params)
+        return model_flux
+
+    def mask_out_of_transit(self, star, oot_duration_fraction=0.25,
+                            flip=False):
+        """
+        Mask out the out-of-transit light curve based on transit parameters
+
+        Parameters
+        ----------
+        oot_duration_fraction : float (optional)
+            Fluxes from what fraction of a transit duration of the
+            out-of-transit light curve should be included in the mask?
+        flip : bool (optional)
+            If `True`, mask in-transit rather than out-of-transit.
+
+        Returns
+        -------
+        d : dict
+            Inputs for a new `LightCurve` object with the mask applied.
+        """
+        # Fraction of one duration to capture out of transit
+        phased = (self.times.jd - star.t0) % star.per
+        near_transit = ((phased < star.duration*(0.5 + oot_duration_fraction)) |
+                        (phased > star.per - star.duration*(0.5 + oot_duration_fraction)))
+        if flip:
+            near_transit = ~near_transit
+        sort_by_time = np.argsort(self.times[near_transit].jd)
+        return dict(times=self.times[near_transit][sort_by_time],
+                    fluxes=self.fluxes[near_transit][sort_by_time],
+                    errors=self.errors[near_transit][sort_by_time],
+                    quarters=self.quarters[near_transit][sort_by_time],
+                    params=star)

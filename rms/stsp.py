@@ -289,7 +289,7 @@ class STSP(object):
         except subprocess.CalledProcessError as err:
             pass  # print("Failed. Error:", err.output, err.stderr, err.stdout)
 
-        time.sleep(0.01)
+        #time.sleep(0.01)
         # Read the outputs
         if os.stat(os.path.join(self.outdir, 'test_lcout.txt')).st_size == 0:
             stsp_times = self.times.jd
