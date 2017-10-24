@@ -236,9 +236,9 @@ class STSP(object):
         # Normalize light curve to unity
         real_max = 1
 
-        n_transits = np.rint(np.median((self.star.t0 -
+        n_transits = np.rint(np.median((self.star.planet.t0 -
                                         self.times.jd) /
-                                       self.star.per))
+                                       self.star.planet.per))
 
         times = self.times.jd
         fluxes = np.ones_like(times)
@@ -249,12 +249,12 @@ class STSP(object):
                    fmt=str('%1.10f'), delimiter='\t', header='stspinputs')
 
         # Calculate parameters for STSP:
-        eccentricity, omega = self.star.ecc, self.star.w
+        eccentricity, omega = self.star.planet.ecc, self.star.planet.w
         ecosw = eccentricity*np.cos(np.radians(omega))
         esinw = eccentricity*np.sin(np.radians(omega))
         start_time = times[0]
         lc_duration = times[-1] - times[0]
-        nonlinear_ld = quadratic_to_nonlinear(*self.star.u)
+        nonlinear_ld = quadratic_to_nonlinear(*self.star.planet.u)
         nonlinear_ld_string = ' '.join(map("{0:.5f}".format, nonlinear_ld))
 
         # get spot parameters sorted out
@@ -262,15 +262,15 @@ class STSP(object):
 
         # Stick those values into the template file
 
-        params_dict = dict(period=self.star.per, ecosw=ecosw,
-                           esinw=esinw, lam=self.star.lam,
+        params_dict = dict(period=self.star.planet.per, ecosw=ecosw,
+                           esinw=esinw, lam=self.star.planet.lam,
                            tilt_from_z=90-self.star.inc_stellar,
                            start_time=start_time, lc_duration=lc_duration,
                            real_max=real_max, per_rot=self.star.per_rot,
-                           rho_s=1.0, depth=self.star.rp ** 2,
-                           duration=self.star.duration,
-                           t0=self.star.t0, b=self.star.b,
-                           inclination=self.star.inc,
+                           rho_s=1.0, depth=self.star.planet.rp ** 2,
+                           duration=self.star.planet.duration,
+                           t0=self.star.planet.t0, b=self.star.planet.b,
+                           inclination=self.star.planet.inc,
                            nonlinear_ld=nonlinear_ld_string,
                            n_ld_rings=n_ld_rings,
                            spot_params=spot_params_str[:-1],

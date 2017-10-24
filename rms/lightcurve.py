@@ -53,8 +53,9 @@ class LightCurve(object):
         self.quarters = quarters
         self.name = name
 
-    def phases(self, params):
-        phase = ((self.times.jd - params.t0) % params.per_rot)/params.per_rot
+    def phases(self, star):
+        phase = ((self.times.jd - star.planet.t0) %
+                 star.planet.per_rot)/star.planet.per_rot
         phase[phase > 0.5] -= 1.0
         return phase
 
@@ -84,7 +85,7 @@ class LightCurve(object):
             phase = True
 
         if phase:
-            x = (self.times.jd - star.t0)/star.per_rot % 1
+            x = (self.times.jd - star.planet.t0)/star.planet.per_rot % 1
             first_half = x < 0.5
             second_half = x >= 0.5
             ax.plot(x[second_half] - 1, self.fluxes[second_half], '.', color='gray', alpha=0.5)
@@ -302,9 +303,9 @@ class LightCurve(object):
             Inputs for a new `LightCurve` object with the mask applied.
         """
         # Fraction of one duration to capture out of transit
-        phased = (self.times.jd - star.t0) % star.per
-        near_transit = ((phased < star.duration*(0.5 + oot_duration_fraction)) |
-                        (phased > star.per - star.duration*(0.5 + oot_duration_fraction)))
+        phased = (self.times.jd - star.planet.t0) % star.planet.per
+        near_transit = ((phased < star.planet.duration*(0.5 + oot_duration_fraction)) |
+                        (phased > star.planet.per - star.planet.duration*(0.5 + oot_duration_fraction)))
         if flip:
             near_transit = ~near_transit
         sort_by_time = np.argsort(self.times[near_transit].jd)
