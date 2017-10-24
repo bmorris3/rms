@@ -1,4 +1,5 @@
 # Licensed under the MIT License - see LICENSE
+import numpy as np
 
 __all__ = ['Planet']
 
@@ -54,16 +55,17 @@ class Planet(object):
             Projected spin-orbit angle [degrees]. ``lam=0`` is aligned,
             ``lam=90`` is perfectly misaligned.
         b : float
-            Impact parameter
+            Impact parameter. If none is supplied and ``ecc=0``, the impact
+            parameter will be computed for you.
         duration : float
-            Duration of transit [days]
+            Duration of transit [days]. If none is supplied and ``ecc=0``, one
+            will be computed for you.
         u : float
             Limb darkening parameters
         limb_dark : float
             Limb darkening formula
         """
         self.per = per
-        self.inc = inc
         self.a = a
         self.t0 = t0
         self.u = u
@@ -72,8 +74,23 @@ class Planet(object):
         self.ecc = ecc
         self.w = w
         self.lam = lam
-        self.b = b
+
+        # If given ecc and inc but not b, compute b
+        if b is None and ecc == 0 and inc is not None:
+            b = a * np.cos(np.radians(inc))
+
+        # If given ecc and b but not inc, compute inc
+        if b is not None and ecc == 0 and inc is None:
+            inc = np.degrees(np.arccos(b/a))
+
+        if duration is None and ecc == 0:
+            duration = per/np.pi * np.arcsin((np.sqrt(1 - rp**2) - b**2) /
+                                             np.sin(np.radians(inc)) / a)
+
         self.duration = duration
+        self.inc = inc
+        self.b = b
+
 
     @classmethod
     def from_hat11(cls):
