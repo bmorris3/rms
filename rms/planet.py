@@ -33,6 +33,35 @@ class Planet(object):
     def __init__(self, per=None, inc=None, a=None, t0=None, rp=None, ecc=None,
                  w=None, lam=None, b=None, duration=None, u=[0.2, 0.1],
                  limb_dark='quadratic', **kwargs):
+        """
+        Parameters
+        ----------
+        per : float
+            Orbital period [days]
+        inc : float
+            Orbital inclination [degrees]
+        a : float
+            Semimajor axis [stellar radii] (a/R_star)
+        t0 : float
+            Mid-transit time [JD]
+        rp : float
+            Ratio of planet to stellar radius (Rp/Rstar)
+        ecc : float
+            Eccentricity
+        w : float
+            Argument of periastron [degrees]
+        lam : float
+            Projected spin-orbit angle [degrees]. ``lam=0`` is aligned,
+            ``lam=90`` is perfectly misaligned.
+        b : float
+            Impact parameter
+        duration : float
+            Duration of transit [days]
+        u : float
+            Limb darkening parameters
+        limb_dark : float
+            Limb darkening formula
+        """
         self.per = per
         self.inc = inc
         self.a = a

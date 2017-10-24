@@ -236,10 +236,6 @@ class STSP(object):
         # Normalize light curve to unity
         real_max = 1
 
-        n_transits = np.rint(np.median((self.star.planet.t0 -
-                                        self.times.jd) /
-                                       self.star.planet.per))
-
         times = self.times.jd
         fluxes = np.ones_like(times)
 

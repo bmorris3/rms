@@ -55,7 +55,7 @@ class LightCurve(object):
 
     def phases(self, star):
         phase = ((self.times.jd - star.planet.t0) %
-                 star.planet.per_rot)/star.planet.per_rot
+                 star.per_rot)/star.per_rot
         phase[phase > 0.5] -= 1.0
         return phase
 
@@ -85,7 +85,7 @@ class LightCurve(object):
             phase = True
 
         if phase:
-            x = (self.times.jd - star.planet.t0)/star.planet.per_rot % 1
+            x = (self.times.jd - star.planet.t0)/star.per_rot % 1
             first_half = x < 0.5
             second_half = x >= 0.5
             ax.plot(x[second_half] - 1, self.fluxes[second_half], '.', color='gray', alpha=0.5)
