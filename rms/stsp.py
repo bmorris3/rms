@@ -12,7 +12,8 @@ from astropy.io import ascii
 from astropy.io.ascii import InconsistentTableError
 
 from .lightcurve import LightCurve
-from .exceptions import OverlappingSpotsWarning, STSPMemoryWarning
+from .exceptions import (OverlappingSpotsWarning, STSPMemoryWarning,
+                         STSPFailureWarning)
 
 
 __all__ = ['STSP', 'clean_up_rms_stsp_dirs']
@@ -78,7 +79,7 @@ def _spot_obj_to_params(spot, quiet=False):
         return np.array([spot.r, spot.theta, spot.phi])
 
 
-def find_overlapping_spots(spot_list, tolerance=1.05, quiet=False):
+def find_overlapping_spots(spot_list, tolerance=1.5:, quiet=False):
     """
     Find overlapping spots in a list of spot objects.
 
@@ -187,6 +188,7 @@ class STSP(object):
         """
         self.times = times
         self.star = star
+        self.quiet = quiet
         self.spot_params = _spot_obj_to_params(spot, quiet=quiet)
         self.spot_contrast = self.star.spot_contrast
 
@@ -241,9 +243,7 @@ class STSP(object):
         times = self.times.jd
         fluxes = np.ones_like(times)
 
-        np.savetxt(self.model_path,
-                   np.vstack([times, fluxes,
-                              fluxes]).T,
+        np.savetxt(self.model_path, np.vstack([times, fluxes, fluxes]).T,
                    fmt=str('%1.10f'), delimiter='\t', header='stspinputs')
 
         # Calculate parameters for STSP:
@@ -283,9 +283,13 @@ class STSP(object):
             in_file.write(in_file_text)
 
         try:
-            stdout = subprocess.check_call([stsp_exec, 'test.in'], cwd=self.outdir)
+            stdout = subprocess.check_call([stsp_exec, 'test.in'],
+                                           cwd=self.outdir)
         except subprocess.CalledProcessError as err:
-            print("Failed. Error:", err.output, err.stderr, err.stdout)
+            if not self.quiet:
+                warning_message = ("STSP failed - this could be a result of "
+                                   "bad inputs.")
+                warn(warning_message, STSPFailureWarning)
 
         # Read the outputs
         if os.stat(os.path.join(self.outdir, 'test_lcout.txt')).st_size == 0:

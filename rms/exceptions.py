@@ -2,7 +2,7 @@
 
 from astropy.utils.exceptions import AstropyUserWarning
 
-__all__ = ['OverlappingSpotsWarning', 'STSPMemoryWarning']
+__all__ = ['OverlappingSpotsWarning', 'STSPMemoryWarning', 'STSPFailureWarning']
 
 
 class OverlappingSpotsWarning(AstropyUserWarning):
@@ -15,5 +15,11 @@ class OverlappingSpotsWarning(AstropyUserWarning):
 class STSPMemoryWarning(AstropyUserWarning):
     """
     Warning for when a user is accruing lots of STSP input/output directories.
+    """
+    pass
+
+class STSPFailureWarning(AstropyUserWarning):
+    """
+    Warning for when STSP seg-faults or returns an initialization error
     """
     pass
