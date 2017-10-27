@@ -307,7 +307,7 @@ class LightCurve(object):
         near_transit = ((phased < star.planet.duration*(0.5 + oot_duration_fraction)) |
                         (phased > star.planet.per - star.planet.duration*(0.5 + oot_duration_fraction)))
         if flip:
-            near_transit = ~near_transit
+            near_transit = np.logical_not(near_transit)
         sort_by_time = np.argsort(self.times[near_transit].jd)
         return dict(times=self.times[near_transit][sort_by_time],
                     fluxes=self.fluxes[near_transit][sort_by_time],

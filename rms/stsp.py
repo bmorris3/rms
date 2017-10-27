@@ -9,6 +9,7 @@ import os, subprocess, shutil, time
 
 import numpy as np
 from astropy.io import ascii
+from astropy.io.ascii import InconsistentTableError
 
 from .lightcurve import LightCurve
 from .exceptions import OverlappingSpotsWarning, STSPMemoryWarning
@@ -47,7 +48,7 @@ infile_template_l = """#PLANET PROPERTIES
 {start_time:2.10f}		; start time to start fitting the light curve
 {lc_duration:2.10f}		; duration of light curve to fit (days)
 {real_max:2.10f}		; real maximum of light curve data (corrected for noise), 0 -> use downfrommax
-0						; is light curve flattened (to zero) outside of transits?
+1						; is light curve flattened (to zero) outside of transits?
 #ACTION
 l						; l= generate light curve from parameters
 {spot_params}
@@ -67,17 +68,17 @@ def quadratic_to_nonlinear(u1, u2):
     return a1, a2, a3, a4
 
 
-def _spot_obj_to_params(spot):
+def _spot_obj_to_params(spot, quiet=False):
 
     if hasattr(spot, '__len__'):
-        validated_spot_list = find_overlapping_spots(spot)
+        validated_spot_list = find_overlapping_spots(spot, quiet=quiet)
         return np.concatenate([[s.r, s.theta, s.phi]
                                for s in validated_spot_list])
     else:
         return np.array([spot.r, spot.theta, spot.phi])
 
 
-def find_overlapping_spots(spot_list, tolerance=1.01):
+def find_overlapping_spots(spot_list, tolerance=1.05, quiet=False):
     """
     Find overlapping spots in a list of spot objects.
 
@@ -110,7 +111,7 @@ def find_overlapping_spots(spot_list, tolerance=1.01):
                         if i in save_these_spot_indices]
     toss_these_spots = [spot for i, spot in enumerate(spot_list)
                         if i in toss_these_spot_indices]
-    if len(spots_with_overlap) > 0:
+    if len(spots_with_overlap) > 0 and not quiet:
         warning_message = ('Some spots were overlapping. Tossing one of the two'
                            ' overlapping spots. \n\nSpots tossed:\n\n' +
                            '\n'.join(map(str, toss_these_spots)))
@@ -170,7 +171,8 @@ class STSP(object):
     """
     Context manager for working with STSP
     """
-    def __init__(self, times, star, spot, outdir=None, keep_dir=False):
+    def __init__(self, times, star, spot, outdir=None, keep_dir=False,
+                 quiet=False):
         """
         Parameters
         ----------
@@ -185,7 +187,7 @@ class STSP(object):
         """
         self.times = times
         self.star = star
-        self.spot_params = _spot_obj_to_params(spot)
+        self.spot_params = _spot_obj_to_params(spot, quiet=quiet)
         self.spot_contrast = self.star.spot_contrast
 
         current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
@@ -281,22 +283,26 @@ class STSP(object):
             in_file.write(in_file_text)
 
         try:
-            stdout = subprocess.check_output([stsp_exec, 'test.in'], cwd=self.outdir)
+            stdout = subprocess.check_call([stsp_exec, 'test.in'], cwd=self.outdir)
         except subprocess.CalledProcessError as err:
-            pass  # print("Failed. Error:", err.output, err.stderr, err.stdout)
+            print("Failed. Error:", err.output, err.stderr, err.stdout)
 
-        #time.sleep(0.01)
         # Read the outputs
         if os.stat(os.path.join(self.outdir, 'test_lcout.txt')).st_size == 0:
             stsp_times = self.times.jd
-            stsp_fluxes = np.ones_like(self.times)
-            stsp_flag = 0 * np.ones_like(self.times)
+            stsp_fluxes = np.ones(len(self.times))
+            stsp_flag = 0 * np.ones(len(self.times))
 
         else:
-            tbl = ascii.read(os.path.join(self.outdir, 'test_lcout.txt'),
-                             format='fast_no_header')
-            stsp_times, stsp_fluxes, stsp_flag = tbl['col1'], tbl['col4'], tbl['col5']
-        return LightCurve(times=stsp_times, fluxes=stsp_fluxes.data, quarters=stsp_flag)
+            try:
+                tbl = ascii.read(os.path.join(self.outdir, 'test_lcout.txt'),
+                                 format='fast_no_header')
+                stsp_times, stsp_fluxes, stsp_flag = tbl['col1'], tbl['col4'].data, tbl['col5']
+            except InconsistentTableError:
+                stsp_times = self.times.jd
+                stsp_fluxes = np.ones(len(self.times)) * np.nan
+                stsp_flag = 0 * np.ones(len(self.times))
+        return LightCurve(times=stsp_times, fluxes=stsp_fluxes, quarters=stsp_flag)
 
 
 def _spot_params_to_string(spot_params):
