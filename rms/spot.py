@@ -180,7 +180,7 @@ def sunspot_latitude_inverse_transform(x, mean_latitude=15):
     lat : `~astropy.units.Quantity`
         Latitude of a sunspot drawn from the sunspot latitude distribution.
     """
-    lats = np.linspace(-85, 85, 1000)
+    lats = np.linspace(-88, 88, 1000)
     prob = np.cumsum(sunspot_distribution(lats, mean_latitude=mean_latitude))
     prob /= np.max(prob)
     return np.interp(x, prob, lats) * u.deg

@@ -79,7 +79,7 @@ def _spot_obj_to_params(spot, quiet=False):
         return np.array([spot.r, spot.theta, spot.phi])
 
 
-def find_overlapping_spots(spot_list, tolerance=1.5:, quiet=False):
+def find_overlapping_spots(spot_list, tolerance=1.01, quiet=False):
     """
     Find overlapping spots in a list of spot objects.
 
@@ -93,8 +93,10 @@ def find_overlapping_spots(spot_list, tolerance=1.5:, quiet=False):
     for i in range(len(spot_list)):
         for j in range(len(spot_list)):
             if i < j:
-                sep = np.arccos(np.cos(spot_list[i].theta) * np.cos(spot_list[j].theta) +
-                                np.sin(spot_list[i].theta) * np.sin(spot_list[j].theta) *
+                sep = np.arccos(np.cos(spot_list[i].theta) *
+                                np.cos(spot_list[j].theta) +
+                                np.sin(spot_list[i].theta) *
+                                np.sin(spot_list[j].theta) *
                                 np.cos(spot_list[i].phi - spot_list[j].phi))
                 if sep < tolerance * (spot_list[i].r + spot_list[j].r):
                     overlapping_pairs.append((i, j))
