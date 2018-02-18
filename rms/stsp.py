@@ -259,7 +259,7 @@ class STSP(object):
         esinw = eccentricity*np.sin(np.radians(omega))
         start_time = times[0]
         lc_duration = times[-1] - times[0] + 1e-6
-        nonlinear_ld = quadratic_to_nonlinear(*self.star.planet.u)
+        nonlinear_ld = quadratic_to_nonlinear(*self.star.u)
         nonlinear_ld_string = ' '.join(map("{0:.5f}".format, nonlinear_ld))
 
         # get spot parameters sorted out

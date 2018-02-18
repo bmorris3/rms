@@ -49,14 +49,27 @@ hat7_params = {
     "inc": 83.111  # Morris
 }
 
+null_planet_params = {
+    "a": 100,
+    "fp": None,
+    "b": 2,
+    "ecc": 0.0,
+    "per": 100,
+    "t0": 2454954.357463,
+    "w": 90,
+    "rp": 0.001,
+    "inc": 0,
+    "lam": 0,
+    "duration": 0
+}
+
 
 class Planet(object):
     """
     Exoplanet transit properties.
     """
     def __init__(self, per=None, inc=None, a=None, t0=None, rp=None, ecc=None,
-                 w=None, lam=None, b=None, duration=None, u=[0.2, 0.1],
-                 limb_dark='quadratic', **kwargs):
+                 w=None, lam=None, b=None, duration=None, **kwargs):
         """
         Parameters
         ----------
@@ -83,32 +96,27 @@ class Planet(object):
         duration : float
             Duration of transit [days]. If none is supplied and ``ecc=0``, one
             will be computed for you.
-        u : float
-            Limb darkening parameters
-        limb_dark : float
-            Limb darkening formula
         """
         self.per = per
         self.a = a
         self.t0 = t0
-        self.u = u
-        self.limb_dark = limb_dark
         self.rp = rp
         self.ecc = ecc
         self.w = w
         self.lam = lam
 
-        # If given ecc and inc but not b, compute b
-        if b is None and ecc == 0 and inc is not None:
-            b = a * np.cos(np.radians(inc))
+        if inc != 0:
+            # If given ecc and inc but not b, compute b
+            if b is None and ecc == 0 and inc is not None:
+                b = a * np.cos(np.radians(inc))
 
-        # If given ecc and b but not inc, compute inc
-        if b is not None and ecc == 0 and inc is None:
-            inc = np.degrees(np.arccos(b/a))
+            # If given ecc and b but not inc, compute inc
+            if b is not None and ecc == 0 and inc is None:
+                inc = np.degrees(np.arccos(b/a))
 
-        if duration is None and ecc == 0:
-            duration = per/np.pi * np.arcsin((np.sqrt(1 - rp**2) - b**2) /
-                                             np.sin(np.radians(inc)) / a)
+            if duration is None and ecc == 0:
+                duration = per/np.pi * np.arcsin((np.sqrt(1 - rp**2) - b**2) /
+                                                 np.sin(np.radians(inc)) / a)
 
         self.duration = duration
         self.inc = inc
@@ -117,8 +125,21 @@ class Planet(object):
 
     @classmethod
     def from_hat11(cls):
+        """
+        Return a planet with the parameters of HAT-P-11 b.
+        """
         return cls(**hat11_params)
 
     @classmethod
     def from_hat7(cls):
+        """
+        Return a planet with the parameters of HAT-P-7 b.
+        """
         return cls(**hat7_params)
+
+    @classmethod
+    def non_transiting(cls):
+        """
+        Return a planet that does not transit.
+        """
+        return cls(**null_planet_params)
