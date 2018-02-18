@@ -29,24 +29,24 @@ hat11_params = {
 hat7_params = {
     "a": 4.1502,
     "fp": None,
-    "b": 0.50021254073449306,
+    "b": 0.4978,
     "ecc": 0.0,
     "inc_stellar": 0,  # Lund 2014
     "rho_star": 0.18875,  # Lund 2014
     "limb_dark": "quadratic",
-    "per": 2.204737,
-    "per_rot": 13.0, # Lund 2014
+    "per": 2.204737,  # Morris
+    "per_rot": 13.0,  # Lund 2014
     "lam": 155,  # Albrecht et al 2012
     "t_secondary": None,
     "t0": 2454954.357463,
-    "w": 0.0,
-    "duration": 0.12813004872191647,
-    "rp": 0.058330305324663184,
+    "w": 90,
+    "duration": 0.13701750368545595,  # Morris
+    "rp": 0.077590,
     "u": [
         0.3525,
         0.168
     ],
-    "inc": 83.111
+    "inc": 83.111  # Morris
 }
 
 

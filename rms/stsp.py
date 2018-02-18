@@ -49,7 +49,7 @@ infile_template_l = """#PLANET PROPERTIES
 {start_time:2.10f}		; start time to start fitting the light curve
 {lc_duration:2.10f}		; duration of light curve to fit (days)
 {real_max:2.10f}		; real maximum of light curve data (corrected for noise), 0 -> use downfrommax
-1						; is light curve flattened (to zero) outside of transits?
+{normalize_oot:d}    	; is light curve flattened (to zero) outside of transits?
 #ACTION
 l						; l= generate light curve from parameters
 {spot_params}
@@ -217,7 +217,8 @@ class STSP(object):
         if not self.keep_dir:
             shutil.rmtree(self.outdir)
 
-    def generate_lightcurve(self, n_ld_rings=40, stsp_exec=None):
+    def generate_lightcurve(self, n_ld_rings=40, stsp_exec=None,
+                            normalize_oot=False):
         """
         Generate a light curve with STSP.
 
@@ -229,6 +230,10 @@ class STSP(object):
         stsp_exec : str (optional)
             Optionally pass in a path to a different STSP executable with this
             argument.
+        normalize_oot : bool
+            Normalize the out-of-transit portions of the light curve? Default
+            is `False`. Set to `True` when studying spot occultations during
+            transits.
 
         Return
         ------
@@ -276,7 +281,8 @@ class STSP(object):
                            spot_params=spot_params_str[:-1],
                            n_spots=int(len(self.spot_params)/3),
                            model_path=os.path.basename(self.model_path),
-                           spot_contrast=self.spot_contrast)
+                           spot_contrast=self.spot_contrast,
+                           normalize_oot=int(normalize_oot))
 
         in_file_text = infile_template_l.format(**params_dict)
 
