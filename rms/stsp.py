@@ -5,7 +5,7 @@ from glob import glob
 import datetime
 from threading import Lock
 from warnings import warn
-import os, subprocess, shutil, time
+import os, subprocess, shutil
 
 import numpy as np
 from astropy.io import ascii
@@ -268,11 +268,11 @@ class STSP(object):
         # Stick those values into the template file
 
         params_dict = dict(period=self.star.planet.per, ecosw=ecosw,
-                           esinw=esinw, lam=self.star.planet.lam,
+                esinw=esinw, lam=self.star.planet.lam,
                            tilt_from_z=90-self.star.inc_stellar,
                            start_time=start_time, lc_duration=lc_duration,
                            real_max=real_max, per_rot=self.star.per_rot,
-                           rho_s=1.0, depth=self.star.planet.rp ** 2,
+                           rho_s=self.star.rho_s, depth=self.star.planet.rp ** 2,
                            duration=self.star.planet.duration,
                            t0=self.star.planet.t0, b=self.star.planet.b,
                            inclination=self.star.planet.inc,

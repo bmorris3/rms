@@ -10,7 +10,7 @@ class Star(object):
     An object for stellar parameters, to use as inputs for STSP.
     """
     def __init__(self, planet=None, rotation_period=None, inc_stellar=None,
-                 spot_contrast=0.7, u=[0.2, 0.1]):
+                 spot_contrast=0.7, u=[0.2, 0.1], rho_s=1.0):
         """
         Parameters
         ----------
@@ -29,6 +29,8 @@ class Star(object):
         planet : `~rms.Planet`
             Planet parameters. If planet is None, a non-transiting planet will
             be used for STSP computations.
+        rho_s : float
+            Stellar density in units of the solar density
         """
         self.inc_stellar = inc_stellar
         self.per_rot = rotation_period
@@ -39,3 +41,4 @@ class Star(object):
 
         self.planet = planet
         self.u = u
+        self.rho_s = rho_s
