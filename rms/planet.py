@@ -115,7 +115,7 @@ class Planet(object):
                 inc = np.degrees(np.arccos(b/a))
 
             if duration is None and ecc == 0:
-                duration = per/np.pi * np.arcsin((np.sqrt(1 - rp**2) - b**2) /
+                duration = per/np.pi * np.arcsin(np.sqrt((1 + rp)**2 - b**2) /
                                                  np.sin(np.radians(inc)) / a)
 
         self.duration = duration

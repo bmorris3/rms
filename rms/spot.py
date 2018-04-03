@@ -34,8 +34,9 @@ class Spot(object):
         return cls(lat, lon, radius)
 
     @classmethod
-    def from_sunspot_distribution(cls, mean_latitude=15):
-        lat = draw_random_sunspot_latitudes(n=1, mean_latitude=mean_latitude)[0]
+    def from_sunspot_distribution(cls, mean_latitude=15, sigma_lat=6):
+        lat = draw_random_sunspot_latitudes(n=1, mean_latitude=mean_latitude,
+                                            sigma_lat=sigma_lat)[0]
         lon = 2*np.pi * np.random.rand() * u.rad
         radius = draw_random_sunspot_radii(n=1)[0]
         return cls(lat, lon, radius)
@@ -143,7 +144,7 @@ def generate_random_coord(n=1):
     return result
 
 
-def sunspot_distribution(latitude, mean_latitude=15):
+def sunspot_distribution(latitude, mean_latitude=15, sigma_lat=6):
     """
     Approximate un-normalized probability distribution of sunspots at
     ``latitude`` near activity maximum on the Sun.
@@ -161,10 +162,10 @@ def sunspot_distribution(latitude, mean_latitude=15):
     p : `~numpy.ndarray
         Probability (un-normalized)
     """
-    return np.exp(-0.5 * (abs(latitude) - mean_latitude)**2 / 6**2)
+    return np.exp(-0.5 * (abs(latitude) - mean_latitude)**2 / sigma_lat**2)
 
 
-def sunspot_latitude_inverse_transform(x, mean_latitude=15):
+def sunspot_latitude_inverse_transform(x, mean_latitude=15, sigma_lat=6):
     """
     Use inverse transform sampling to randomly draw spot latitudes from the
     sunspot latitude distribution, for a uniform random variate ``x`` on the
@@ -181,12 +182,13 @@ def sunspot_latitude_inverse_transform(x, mean_latitude=15):
         Latitude of a sunspot drawn from the sunspot latitude distribution.
     """
     lats = np.linspace(-88, 88, 1000)
-    prob = np.cumsum(sunspot_distribution(lats, mean_latitude=mean_latitude))
+    prob = np.cumsum(sunspot_distribution(lats, mean_latitude=mean_latitude,
+                                          sigma_lat=sigma_lat))
     prob /= np.max(prob)
     return np.interp(x, prob, lats) * u.deg
 
 
-def draw_random_sunspot_latitudes(n, mean_latitude=15):
+def draw_random_sunspot_latitudes(n, mean_latitude=15, sigma_lat=6):
     """
     Draw one or more random samples from the sunspot latitude distribution.
 
@@ -201,7 +203,8 @@ def draw_random_sunspot_latitudes(n, mean_latitude=15):
         Latitude of a sunspot drawn from the sunspot latitude distribution.
     """
     return sunspot_latitude_inverse_transform(np.random.rand(n),
-                                              mean_latitude=mean_latitude)
+                                              mean_latitude=mean_latitude,
+                                              sigma_lat=sigma_lat)
 
 
 def sunspot_umbral_area_distribution(log_area_uhem):

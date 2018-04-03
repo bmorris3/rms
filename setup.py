@@ -1,4 +1,5 @@
-from setuptools import setup
+from setuptools import setup, Extension
+import numpy as np
 
 packagename = 'rms'
 
@@ -15,4 +16,6 @@ setup(name=packagename,
       packages=[packagename],
       include_package_data=True,
       package_data={"": ["LICENSE"]},
+      ext_modules = [Extension("overlap", ["rms/overlap.c"],
+                               include_dirs=[np.get_include()])]
 )

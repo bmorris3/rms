@@ -72,55 +72,63 @@ def quadratic_to_nonlinear(u1, u2):
 def _spot_obj_to_params(spot, quiet=False):
 
     if hasattr(spot, '__len__'):
-        validated_spot_list = find_overlapping_spots(spot, quiet=quiet)
+        non_overlapping_spot_inds = find_overlapping_spots(spot)
         return np.concatenate([[s.r, s.theta, s.phi]
-                               for s in validated_spot_list])
+                               for i, s in enumerate(spot)
+                               if i in non_overlapping_spot_inds])
     else:
         return np.array([spot.r, spot.theta, spot.phi])
 
 
-def find_overlapping_spots(spot_list, tolerance=1.01, quiet=False):
-    """
-    Find overlapping spots in a list of spot objects.
+def find_overlapping_spots(spot_list):
+    from overlap import find_overlapping_spots as find
+    return find(np.array([spot.theta for spot in spot_list]),
+                np.array([spot.phi for spot in spot_list]),
+                np.array([spot.r for spot in spot_list]))
 
-    Parameters
-    ----------
-    spot_list : list
-    tolerance : float
-    """
-    overlapping_pairs = []
-    spots_with_overlap = []
-    for i in range(len(spot_list)):
-        for j in range(len(spot_list)):
-            if i < j:
-                sep = np.arccos(np.cos(spot_list[i].theta) *
-                                np.cos(spot_list[j].theta) +
-                                np.sin(spot_list[i].theta) *
-                                np.sin(spot_list[j].theta) *
-                                np.cos(spot_list[i].phi - spot_list[j].phi))
-                if sep < tolerance * (spot_list[i].r + spot_list[j].r):
-                    overlapping_pairs.append((i, j))
-
-                    if i not in spots_with_overlap:
-                        spots_with_overlap.append(i)
-                    if j not in spots_with_overlap:
-                        spots_with_overlap.append(j)
-
-    spots_without_overlap = [spot for i, spot in enumerate(spot_list)
-                             if i not in spots_with_overlap]
-    save_these_spot_indices = [i[0] for i in overlapping_pairs]
-    toss_these_spot_indices = [i[1] for i in overlapping_pairs]
-    save_these_spots = [spot for i, spot in enumerate(spot_list)
-                        if i in save_these_spot_indices]
-    toss_these_spots = [spot for i, spot in enumerate(spot_list)
-                        if i in toss_these_spot_indices]
-    if len(spots_with_overlap) > 0 and not quiet:
-        warning_message = ('Some spots were overlapping. Tossing one of the two'
-                           ' overlapping spots. \n\nSpots tossed:\n\n' +
-                           '\n'.join(map(str, toss_these_spots)))
-        warn(warning_message, OverlappingSpotsWarning)
-
-    return spots_without_overlap + save_these_spots
+# def find_overlapping_spots(spot_list, tolerance=1.01, quiet=False):
+#     """
+#     Find overlapping spots in a list of spot objects.
+#
+#     Parameters
+#     ----------
+#     spot_list : list
+#     tolerance : float
+#     """
+#     overlapping_pairs = []
+#     spots_with_overlap = []
+#     for i in range(len(spot_list)):
+#         for j in range(len(spot_list)):
+#             if i < j:
+#                 sep = np.arccos(np.cos(spot_list[i].theta) *
+#                                 np.cos(spot_list[j].theta) +
+#                                 np.sin(spot_list[i].theta) *
+#                                 np.sin(spot_list[j].theta) *
+#                                 np.cos(spot_list[i].phi - spot_list[j].phi))
+#                 if sep < tolerance * (spot_list[i].r + spot_list[j].r):
+#                     overlapping_pairs.append((i, j))
+#
+#                     if i not in spots_with_overlap:
+#                         spots_with_overlap.append(i)
+#                     if j not in spots_with_overlap:
+#                         spots_with_overlap.append(j)
+#
+#     spots_without_overlap = [spot for i, spot in enumerate(spot_list)
+#                              if i not in spots_with_overlap]
+#     save_these_spot_indices = [i[0] for i in overlapping_pairs]
+#     save_these_spots = [spot for i, spot in enumerate(spot_list)
+#                         if i in save_these_spot_indices]
+#
+#     if len(spots_with_overlap) > 0 and not quiet:
+#         toss_these_spot_indices = [i[1] for i in overlapping_pairs]
+#         toss_these_spots = [spot for i, spot in enumerate(spot_list)
+#                             if i in toss_these_spot_indices]
+#         warning_message = ('Some spots were overlapping. Tossing one of the two'
+#                            ' overlapping spots. \n\nSpots tossed:\n\n' +
+#                            '\n'.join(map(str, toss_these_spots)))
+#         warn(warning_message, OverlappingSpotsWarning)
+#
+#     return spots_without_overlap #+ save_these_spots
 
 
 def get_rms_dirs():
@@ -187,6 +195,8 @@ class STSP(object):
             Spot parameter object(s)
         outdir : str
             Directory to write temporary outputs into
+        skip_overlap_check : bool
+            If True, skip check that no spots are overlapping.
         """
         self.times = times
         self.star = star
@@ -300,14 +310,15 @@ class STSP(object):
                 warn(warning_message, STSPFailureWarning)
 
         # Read the outputs
-        if os.stat(os.path.join(self.outdir, 'test_lcout.txt')).st_size == 0:
+        lcout_path = os.path.join(self.outdir, 'test_lcout.txt')
+        if not os.path.exists(lcout_path) or os.stat(lcout_path).st_size == 0:
             stsp_times = self.times.jd
             stsp_fluxes = np.ones(len(self.times))
             stsp_flag = 0 * np.ones(len(self.times))
 
         else:
             try:
-                tbl = ascii.read(os.path.join(self.outdir, 'test_lcout.txt'),
+                tbl = ascii.read(lcout_path,
                                  format='fast_no_header')
                 stsp_times, stsp_fluxes, stsp_flag = tbl['col1'], tbl['col4'].data, tbl['col5']
             except InconsistentTableError:
